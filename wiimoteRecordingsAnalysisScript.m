@@ -44,8 +44,8 @@ overlapFrac = .5; % .5*NFFT, When spectra generated using wiimoteRecordingsFftFi
 rawDataPath = 'C:\Users\engs1602\research\data\Data Feb-Mar 2016\Raw Data - wiimote';
 
 % Choose which accelerometer signal to use 
-accelerometerSignal = 'Y';
-% accelerometerSignal = 'Z'; 
+% accelerometerSignal = 'Y';
+accelerometerSignal = 'Z'; 
 
 % Choose which preprocessing technique to use:
 % (I) wiimoteRecordingsPreprocessPerPeriod.m - Preprocesses signal to do FFT per period
@@ -58,8 +58,11 @@ preprocessMethod = 'FixedLen';
 % (II) wiimoteRecordingsFftFixedLen.m - FFT fixed length with overlapping windows
 % (III) wiimoteRecordingsSpectrogram.m - Spectrogram with overlapping windows
 % spectraGenMethod = 'FftPerPeriod';
-% spectraGenMethod = 'FftFixedLen';
-spectraGenMethod = 'Spectrogram';
+spectraGenMethod = 'FftFixedLen';
+% spectraGenMethod = 'Spectrogram';
+
+% Save figure options (Will need to modify path below as required)
+saveFigureOption = false;
 
 % Begin code
 % Initialize following to help with plotting later
@@ -180,7 +183,7 @@ if plotOption
     % WDT 18    
     % isnor(fileIdVec<74) = 0;
     % WDT 32
-    % isnor(fileIdVec<190) = 0;
+    isnor(fileIdVec<190) = 0;
 
     freqStart = 1; 
     freqEnd = 256; 
@@ -203,7 +206,7 @@ if plotOption
     figure(2);
     subplot(5,1,1:2);imagesc(spectraClippedDB); 
 %     caxis(prctile(spectraClippedDB(:), [0,100]))
-    caxis([0 10]);%colorbar;
+    caxis([-1 8]);%colorbar;
     set(gca,'YDir','normal'); ylabel('Frequency'); 
     title(sprintf('|FFT| dB (%s)',conditionLabels{condition}));
     
@@ -215,23 +218,36 @@ if plotOption
 %     set(gca,'YDir','normal'); ylabel('Frequency (Hz)'); 
 %     title(sprintf('|Spectrogram| (%s)',conditionLabels{condition})); 
     
-    subplot(5,1,3);plot(WDTidVec,'LineWidth',1.5); hold on;
+    subplot(5,1,3);
+    yyaxis left;
+    plot(WDTidVec,'LineWidth',1.5); 
+    ylabel('WDTid');    
+    axis([0 size(spectra,2) min(WDTidVec)-1 max(WDTidVec)+1]); 
+    yyaxis right;
     plot(fileIdVec,'LineWidth',1.5);grid on;grid minor;
-    minYaxis = min(cat(1,fileIdVec,WDTids'));
-    maxYaxis = max(cat(1,fileIdVec,WDTids'));
-    axis([0 size(spectra,2) minYaxis-1 maxYaxis+1]); ylabel('WDTid / FileId');
-    hold off;
-    legend('WDTid','FileId');
+    ylabel('FileId');   
+    axis([0 size(spectra,2) min(fileIdVec)-1 max(fileIdVec)+1]);
+%     minYaxis = min(cat(1,fileIdVec,WDTids'));
+%     maxYaxis = max(cat(1,fileIdVec,WDTids'));
+%     axis([0 size(spectra,2) minYaxis-1 maxYaxis+1]); 
+%     legend('WDTid','FileId');
     subplot(5,1,4);plot(timeStampWindow,'LineWidth',1.5);ylabel('Time (s)');grid minor;axis([0 size(spectra,2) 0 max(timeStampWindow)]); 
-    subplot(5,1,5);plot(isnor);grid on;axis([0 size(spectra,2) -0.1 1.1]); 
-    ylabel('Prefix/postfix label');
-    xlabel('Period count across all recordings for Pump 32');
+    subplot(5,1,5);plot(isnor,'LineWidth',1.5);grid on;axis([0 size(spectra,2) -0.1 1.1]); 
 %     ylabel('Prefix/postfix label');
-%     xlabel('Window count across all recordings');    
-    % Save plot
-%     pathName = 'C:\Users\engs1602\research\meetings\smallGroup\20160809ManandharAnalysisCodeUpdate\plots\fftMagZ\';
-%     plotName = fullfile(pathName,sprintf('fftMagZCondition%s',conditionLabels{condition}));
-%     saveas(gcf,plotName, 'fig');
+%     xlabel('Period count across all recordings for Pump 32');
+    ylabel('Prefix/postfix label');
+    xlabel('Window count across all recordings');    
+    
+%     if (saveFigureOption)
+%         % Save plot
+%         pathName = fullfile('C:\Users\engs1602\research\meetings\smallGroup\20160825ManandharAnalysisCodeUpdate\plots',sprintf('caseStudyPumpWDTid%dAcc%szmuv',WDTid,accelerometerSignal));
+%         plotName = fullfile(pathName,sprintf('spectraFftFixedLenWdtid%dAcc%s',WDTid,accelerometerSignal));
+%         fig = gcf;
+%         fig.PaperPositionMode = 'auto';    
+%         print(plotName,'-dpng','-r0');
+%         plotName = fullfile(pathName,sprintf('spectraFftFixedLenWdtid%dAcc%s.fig',WDTid,accelerometerSignal));
+%         savefig(plotName);
+%     end
 end
 
 %% 
@@ -253,14 +269,14 @@ end
 % Uniformly down sample along freq, FFT per period
 % data.x = spectraDB(56:2:64,:)';
 % Hand-pick based on the median/mean plot comparison
-% data.x = spectraDB(127,:)';
+data.x = spectraDB([24,43,115],:)';
 % Hand-pick (lower-freq), FFT per period
 % data.x = spectraDB(12:3:24,:)';
 % Hand-pick (higher-freq), Fixed-length (512) FFT 
 % data.x = spectraDB(111:4:130,:)';
-% data.y = isnor;
-% data.name = {sprintf('WDT32Rec%s_Freq127dB',accelerometerSignal)};
-% % save(fullfile('C:\Users\engs1602\research\data\pumpWiimoteND\',sprintf('WDT32Rec%s_Freq127dB',accelerometerSignal)),'data');
+data.y = isnor;
+data.name = {sprintf('WDT32Rec%s_Freq24_43_115dB',accelerometerSignal)};
+save(fullfile('C:\Users\engs1602\research\data\pumpWiimoteND\expFftHandPickZmeanVsZmuv\',sprintf('WDT32Rec%s_Freq24_43_115dBzmean',accelerometerSignal)),'data');
 % 
 % figure(3);
 % subplot(3,1,1:2);imagesc(data.x');caxis(prctile(spectraClippedDB(:), [5,95]))

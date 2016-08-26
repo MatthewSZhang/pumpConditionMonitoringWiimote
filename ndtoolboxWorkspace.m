@@ -66,8 +66,8 @@ paramsPreset =[];
 % whichdata = 'pump18RecPartial12';
 % load('C:\Users\engs1602\research\data\pumpWiimoteND\pump18RecPartial12');
 % Pump 32
-whichdata = 'WDT32RecY_Freq127dB';
-load('C:\Users\engs1602\research\data\pumpWiimoteND\WDT32RecY_Freq127dB');
+whichdata = 'WDT32RecZzmuv_Freq24_43_115dB';
+load('C:\Users\engs1602\research\data\pumpWiimoteND\expFftHandPickZmeanVsZmuv\WDT32RecZzmuv_Freq24_43_115dB');
 fprintf('\nLoading data set %s...\n', whichdata);
 alldataOri = data.x; % numdata by numftrs
 classlabels = data.y; % numdata by 1, class labels = 1, 2

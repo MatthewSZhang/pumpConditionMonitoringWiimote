@@ -49,6 +49,9 @@ Highpass = designfilt('highpassfir', ...
 % Normalize (Zero mean)
 Y = Y - mean(Y);
 Z = Z - mean(Z);
+% Normalize (Zero mean and unit variance)
+% Y = zscore(Y);
+% Z = zscore(Z);
 arc = [];
 
 % lowpass filter and arc calculation for gross movement
