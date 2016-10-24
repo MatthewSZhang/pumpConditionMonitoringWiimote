@@ -1,9 +1,9 @@
 % Set save figure options (Will probably need to modify path below)
-saveFigureOption = false;
+saveFigureOption = true;
 if (saveFigureOption)
     % Save plot
     folderName = sprintf('caseStudyPumpWDTid%dAcc%s',WDTid,accelerometerSignal);
-    pathName = fullfile('C:\Users\engs1602\research\meetings\smallGroup\20160825ManandharAnalysisCodeUpdate\plots',folderName);
+    pathName = fullfile('C:\Users\engs1602\research\meetings\smallGroup\20160901ManandharAnalysisCodeUpdate\plots',folderName);
 end
 
 % Once the spectra has been generated using
@@ -11,10 +11,15 @@ end
 prcVal = 95;
 
 figure(10);
-medAb = median(spectra(:,1:240),2);
-medNo = median(spectra(:,241:end),2);
-prctileAb = prctile(spectra(:,1:240),prcVal,2);
-prctileNo = prctile(spectra(:,241:end),prcVal,2);
+% Have labels
+% WDT id 18
+% fileIdVec<74
+% WDT id 32
+% fileIdVec<190
+medAb = median(spectra(:,fileIdVec<74),2);
+medNo = median(spectra(:,fileIdVec>=74),2);
+prctileAb = prctile(spectra(:,fileIdVec<74),prcVal,2);
+prctileNo = prctile(spectra(:,fileIdVec>=74),prcVal,2);
 plot(medAb,'r','LineWidth',2);hold on;
 plot(medNo,'b','LineWidth',2);
 plot(prctileAb,'r');hold on;
@@ -24,6 +29,18 @@ legend('Median Ab','Median No','95th per Ab','95th per No');
 xlabel('Hz');
 ylabel('|FFT|');
 yMax = max(cat(1,medAb,medNo,prctileAb,prctileNo));
+axis([0 size(medAb,1)+5 0 yMax+1]);
+
+% No labels
+medAb = median(spectra,2);
+prctileAb = prctile(spectra,prcVal,2);
+plot(medAb,'r','LineWidth',2);hold on;
+plot(prctileAb,'r');hold off;
+grid on;
+legend('Median Ab','95th per Ab');
+xlabel('Hz');
+ylabel('|FFT|');
+yMax = max(cat(1,medAb,prctileAb));
 axis([0 size(medAb,1)+5 0 yMax+1]);
 
 if (saveFigureOption)
@@ -57,11 +74,11 @@ nPlot = 1;
 % Pump WDTid 32 Acc Y
 % for freqComp = [24,43,127];
 % Pump WDTid 32 Acc Z
-for freqComp = [24,43,115];
+% for freqComp = [24,43,115];
 % Pump WDTid 18 Acc Y
-% for freqComp = [26,45,131];
+for freqComp = [26,46,131];
 % Pump WDTid 18 Acc Z
-% for freqComp = [24,45,177];
+% for freqComp = [22,45,53];
     xValues = sort(spectra(freqComp,1:240))';
     pd = fitdist(xValues, 'Gamma');
     pdfValues = pdf(pd,xValues);
@@ -108,5 +125,5 @@ if (saveFigureOption)
     fig.PaperPositionMode = 'auto';    
     print(plotName,'-dpng','-r0');
     plotName = fullfile(pathName,sprintf('pdfCertainFreqCompNoVsAbWdt%dAcc%s.fig',WDTid,accelerometerSignal));
+    savefig(plotName);
 end
-savefig(plotName);

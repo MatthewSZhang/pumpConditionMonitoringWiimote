@@ -66,8 +66,8 @@ paramsPreset =[];
 % whichdata = 'pump18RecPartial12';
 % load('C:\Users\engs1602\research\data\pumpWiimoteND\pump18RecPartial12');
 % Pump 32
-whichdata = 'WDT32RecZzmuv_Freq24_43_115dB';
-load('C:\Users\engs1602\research\data\pumpWiimoteND\expFftHandPickZmeanVsZmuv\WDT32RecZzmuv_Freq24_43_115dB');
+whichdata = 'WDT32RecZ_HpfMaN256FlFreq56_2_64dB';
+load('C:\Users\engs1602\research\meetings\smallGroup\20161013ManandharAnalysisCodeUpdate\plots\WDT32RecZ_HpfMaN256FlFreq56_2_64dB');
 fprintf('\nLoading data set %s...\n', whichdata);
 alldataOri = data.x; % numdata by numftrs
 classlabels = data.y; % numdata by 1, class labels = 1, 2
@@ -88,9 +88,9 @@ alldata = [traindataNor; validdataNor; testdataNor; validdataAb; testdataAb]; % 
 isab = [false(size(traindataNor,1),1); false(size(validdataNor, 1),1); false(size(testdataNor,1),1); true(size(validdataAb,1),1); true(size(testdataAb,1),1)];
 
 % NDtype = 'parzen';
-% NDtype = 'nn';
+NDtype = 'nn';
 % NDtype = 'svmtax';
-NDtype = 'svmsch';
+% NDtype = 'svmsch';
 % NDtype = 'kde';
 % NDtype = 'pca';
 %% Set parameters of the ND method

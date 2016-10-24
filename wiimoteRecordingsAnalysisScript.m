@@ -36,7 +36,7 @@ close all
 
 % For each window in the clip, size of windows and their overlap = 
 % Trade off between frequency/time resolution and smoothness
-NFFT = 512; % At Fs = 96 Hz and Median pump stroke period = 1.2s, 512 samples = 4.5 pump strokes
+NFFT = 256; % At Fs = 96 Hz and Median pump stroke period = 1.2s, 512 samples = 4.5 pump strokes
 maxPeriodLenAdhoc = 150; % When spectra generated using wiimoteRecordingsPreprocessPerPeriod.m
 overlapFrac = .5; % .5*NFFT, When spectra generated using wiimoteRecordingsFftFixedLen.m
 
@@ -44,8 +44,8 @@ overlapFrac = .5; % .5*NFFT, When spectra generated using wiimoteRecordingsFftFi
 rawDataPath = 'C:\Users\engs1602\research\data\Data Feb-Mar 2016\Raw Data - wiimote';
 
 % Choose which accelerometer signal to use 
-% accelerometerSignal = 'Y';
-accelerometerSignal = 'Z'; 
+accelerometerSignal = 'Y';
+% accelerometerSignal = 'Z'; 
 
 % Choose which preprocessing technique to use:
 % (I) wiimoteRecordingsPreprocessPerPeriod.m - Preprocesses signal to do FFT per period
@@ -79,30 +79,30 @@ conditionLabels = {'WorkingExcellent','NoisyButWorking','DryBorehole',...
     'WaterLeakingFromPump','WornBushBearing','StiffHandle','WornSeal'};
     
 % Condition 1: Working excellent 
-% condition = 1; WDTids = [61, 133, 243, 171, 185, 117, 27];
+% condition = 1; WDTids = [61, 243, 171, 117, 27];
 % % Condition 2: Noisy but working
-% condition = 2; WDTids = 18%[273, 18, 140]; % one more private (no WDT)
+% condition = 2; WDTids = [133, 273, 140]; % one more private (no WDT)
 % % Condition 3: Dry borehole
 % condition = 3; WDTids = [145,21];
 % % Condition 4: Rising main leak (Rare)
-% condition = 4; WDTids = [18];
+% condition = 4; WDTids = 18;
 % % Condition 5: Broken seal (Most common)
-condition = 5; WDTids = [32];  
+condition = 5; WDTids = 32;  
 % % Condition 6: Unsure
 % condition = 6; WDTids = [129,132]; % one more India Mark II (no WDT)
 % % Condition 7: Water leaking from pump
 % condition = 7; WDTids = [112, 262, 126, 204];
 % % Condition 8: Worn bush bearing
-% condition = 8; WDTids = [196, 125];
+% condition = 8; WDTids = 125;%[196, 125];
 % % Condition 9: Stiff handle
 % condition = 9; WDTids = [134, 97, 1]; % one more Ukunda (not in pilot, no WDT)
 % % Condition 10: Worn seal
-% condition = 10; WDTids = [192];   
+% condition = 10; WDTids = 192;   
 for WDTid = WDTids
     fprintf('Analyzing data from WDT ID %d ...\n',WDTid);
+    fprintf('File IDs for this WDT ID ...\n');
     % look up fileIds corresponding to WDTid from the XLS spreadsheet
-    fileIdsThisWDT = fileIdLookupTableFun(WDTid)';
-    disp(fileIdsThisWDT);
+    fileIdsThisWDT = fileIdLookupTableFun(WDTid)';        
     if ~any(isnan(fileIdsThisWDT))
         Yall = [];
         Zall = [];
@@ -114,7 +114,7 @@ for WDTid = WDTids
             fclose(file);
             timeStamp = raw{4}/1000 + raw{3} + 60*raw{2};
             Y = raw{6}; 
-            Z = raw{7};          
+            Z = raw{7};            
        
             % Preprocess:
             % LPF >> Find peaks >> Remove the ends of the original signal >> HPF
@@ -181,12 +181,12 @@ if plotOption
     % Better to confirm with Heloise/Farah
     isnor = ones(size(spectra,2),1);
     % WDT 18    
-    % isnor(fileIdVec<74) = 0;
+%     isnor(fileIdVec<74) = 0;
     % WDT 32
     isnor(fileIdVec<190) = 0;
 
     freqStart = 1; 
-    freqEnd = 256; 
+    freqEnd = 128; 
     
 %     % Fixed length overlapping window FFT (STFT)
 %     % Plot spectra, fileId indices, and labels
@@ -238,16 +238,16 @@ if plotOption
     ylabel('Prefix/postfix label');
     xlabel('Window count across all recordings');    
     
-%     if (saveFigureOption)
-%         % Save plot
-%         pathName = fullfile('C:\Users\engs1602\research\meetings\smallGroup\20160825ManandharAnalysisCodeUpdate\plots',sprintf('caseStudyPumpWDTid%dAcc%szmuv',WDTid,accelerometerSignal));
-%         plotName = fullfile(pathName,sprintf('spectraFftFixedLenWdtid%dAcc%s',WDTid,accelerometerSignal));
-%         fig = gcf;
-%         fig.PaperPositionMode = 'auto';    
-%         print(plotName,'-dpng','-r0');
-%         plotName = fullfile(pathName,sprintf('spectraFftFixedLenWdtid%dAcc%s.fig',WDTid,accelerometerSignal));
-%         savefig(plotName);
-%     end
+    if (saveFigureOption)
+        % Save plot
+        pathName = fullfile('C:\Users\engs1602\research\meetings\smallGroup\20160901ManandharAnalysisCodeUpdate\plots',sprintf('caseStudyPumpWDTid%dAcc%s',WDTid,accelerometerSignal));
+        plotName = fullfile(pathName,sprintf('spectraFftFixedLenWdtid%dAcc%s',WDTid,accelerometerSignal));
+        fig = gcf;
+        fig.PaperPositionMode = 'auto';    
+        print(plotName,'-dpng','-r0');
+        plotName = fullfile(pathName,sprintf('spectraFftFixedLenWdtid%dAcc%s.fig',WDTid,accelerometerSignal));
+        savefig(plotName);
+    end
 end
 
 %% 
@@ -267,17 +267,17 @@ end
 % save('C:\Users\engs1602\research\data\pumpWiimoteND\WDT18RecPartial1194_95','data');
 %% WDT 32
 % Uniformly down sample along freq, FFT per period
-% data.x = spectraDB(56:2:64,:)';
+data.x = spectraDB(56:2:64,:)';
 % Hand-pick based on the median/mean plot comparison
-data.x = spectraDB([24,43,115],:)';
+% data.x = spectraDB([24,43,115],:)';
 % Hand-pick (lower-freq), FFT per period
 % data.x = spectraDB(12:3:24,:)';
 % Hand-pick (higher-freq), Fixed-length (512) FFT 
 % data.x = spectraDB(111:4:130,:)';
 data.y = isnor;
-data.name = {sprintf('WDT32Rec%s_Freq24_43_115dB',accelerometerSignal)};
-save(fullfile('C:\Users\engs1602\research\data\pumpWiimoteND\expFftHandPickZmeanVsZmuv\',sprintf('WDT32Rec%s_Freq24_43_115dBzmean',accelerometerSignal)),'data');
+% data.name = {sprintf('WDT32Rec%s_Freq56_2_64dB',accelerometerSignal)};
+% save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161013ManandharAnalysisCodeUpdate\plots\',sprintf('WDT32Rec%s_Freq56_2_64dB',accelerometerSignal)),'data');
 % 
-% figure(3);
-% subplot(3,1,1:2);imagesc(data.x');caxis(prctile(spectraClippedDB(:), [5,95]))
-% subplot(3,1,3);plot(data.y);axis([0 size(data.x,1) 0 1]);
+figure(3);
+subplot(3,1,1:2);imagesc(data.x');caxis(prctile(spectraClippedDB(:), [5,95]))
+subplot(3,1,3);plot(data.y);axis([0 size(data.x,1) 0 1]);

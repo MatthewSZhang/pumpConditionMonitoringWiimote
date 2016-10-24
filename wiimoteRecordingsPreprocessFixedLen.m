@@ -82,6 +82,7 @@ if (plotOption)
     axis([0 xMax -1 1]);
 end
 
+
 % There has to be at least 3 troughs!
 if length(locsTroughs)<=minNumOfTroughsInRecording
     Y = [];
@@ -93,7 +94,7 @@ else
     locsTroughs = locsTroughs(2:end-1);
     interval2 = (locsTroughs(1):locsTroughs(end))';
     
-    % Check is the lenght of time-series >= NFFT
+    % Check if the length of time-series >= NFFT
     if length(interval2)<NFFT
         Y = [];
         Y_hp = [];
@@ -163,11 +164,42 @@ else
 
         % Apply highpass filter to whole recording
         Y_hp = filtfilt(Highpass, Y); 
-        if (plotOption)
-            figure(fileId);subplot(5,1,5);plot(timeStamp,Y_hp);ylabel('Y High-passed');grid on; 
-            axis([0 xMax -.25 .25]);
-            xlabel('Time (s)');
-        end 
+%         % Moving average filter coeff
+%         a = 1;
+%         b = [1/4 1/4 1/4 1/4];
+%         Y_mv = filter(b,a,Y);
+%         Y_hp = Y-Y_mv;
+%         if (plotOption)
+%             figure(fileId);subplot(5,1,5);plot(timeStamp,Y_hp);ylabel('Y High-passed');grid on; 
+%             axis([0 xMax -.25 .25]);
+%             xlabel('Time (s)');
+%         end         
+%         
+%         % Plot diff between filtfilt and HPF=LPF-MA
+%         xMax = timeStamp(end)+5;
+%         figure(10);
+%         subplot(2,1,1);
+%         plot(timeStamp,Y_hp);grid on;
+%         ylabel('Y High-passed');         
+%         xlabel('Time (s)');
+%         
+%         % Moving average filter coeff
+%         a = 1;
+%         b = [1/4 1/4 1/4 1/4];
+%         Y_mv = filter(b,a,Y);
+%         Y_hpma = Y-Y_mv;
+%         hold on;
+%         subplot(2,1,1);
+%         plot(timeStamp,Y_hpma,'r');
+%         axis([0 xMax -.25 .25]);
+%         hold off;
+%         
+%         figure(10);
+%         subplot(2,1,2);
+%         plot(timeStamp,Y_hp-Y_hpma);
+%         axis([0 xMax -.25 .25]);
+%         drawnow;
+%         pause(.2);        
     end
 end
 

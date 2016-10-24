@@ -29,6 +29,8 @@ else
         
         % Apply FFT per window to the highpassed Y signal         
         Yfhat = fft(Y_hp(idxStart:idxEnd), NFFT);
+        keyboard;
+        
         % save this up to the nyquist limit. 
         spectra(:,nWin) = abs(Yfhat(1:NFFT/2));
     
