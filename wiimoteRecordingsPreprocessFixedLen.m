@@ -1,4 +1,4 @@
-function [Y,Y_hp,arc,timeStamp] = wiimoteRecordingsPreprocessFixedLen(Y,Z,timeStamp,fileId,NFFT,plotOption)
+function [Y,Y_hp,arc,timeStamp] = wiimoteRecordingsPreprocessFixedLen(Y,Z,timeStamp,fileId,preprocFeatOptions)
 % AM Last Modified 24/08/2016
 % This function is called by the wiimoteRecordingsAnalysisScript.m script
 % Does all the preprocessing
@@ -7,20 +7,25 @@ function [Y,Y_hp,arc,timeStamp] = wiimoteRecordingsPreprocessFixedLen(Y,Z,timeSt
 % (uncomment the corresponding lines to compute arc)
 % Caution - Involves various adhoc numbers/parameters!
 
+% 28/10/2016 AM Modified: Parameters bundled under preprocFeatOptions
+downsampleFactor = preprocFeatOptions.downsampleFactor;
+NFFT = preprocFeatOptions.NFFT;
+thresholdToFindPeaks = preprocFeatOptions.thresholdToFindPeaks; % threshold used when calling findpeaks.m
+distBetnTroughsThres = preprocFeatOptions.distBetnTroughsThres; % median +/- 0.5*median
+minNumOfTroughsInRecording = preprocFeatOptions.minNumOfTroughsInRecording; % In order to consider this recording
+Fs = preprocFeatOptions.Fs; % sampling frequency will change depending on downsample factor
+plotOption = preprocFeatOptions.plotOption;
+
 fprintf('\t\tPreprocessing...\n');
 
-thresholdToFindPeaks = .25; % threshold used when calling findpeaks.m
-distBetnTroughsThres = 0.5; % median +/- 0.5*median
-minNumOfTroughsInRecording = 3; % In order to consider this recording
-
 %General gist: 
-%Design of high pass filte:Done fairly arbitrarily, based on what looks OK
-Fs = 96;  % Sampling Frequency
+%Design of low-pass/high-pass filters:Done fairly arbitrarily, based on what looks OK
 
 % Zero-phase filtering
 % http://uk.mathworks.com/help/signal/ref/filtfilt.html
-Fpass = 2; % 2*Fpass(Hz)/sampling f(Hz) in normalized freq
-Fstop = 4; % 2*Fstop(Hz)/sampling f(Hz) in normalized freq
+% AM Modified 27 Oct 2016: If the signal is downsampled, Fpass, Fstop will change
+Fpass = 2/downsampleFactor; % 2*Fpass(Hz)/sampling f(Hz) in normalized freq
+Fstop = 4/downsampleFactor; % 2*Fstop(Hz)/sampling f(Hz) in normalized freq
 Lowpass = designfilt('lowpassfir', ...
     'PassbandFrequency',2*Fpass/Fs,'StopbandFrequency',2*Fstop/Fs, ...
     'PassbandRipple',1,'StopbandAttenuation',60, ...
@@ -32,12 +37,13 @@ Lowpass = designfilt('lowpassfir', ...
 
 % 'PassbandRipple',0.5,'StopbandAttenuation',65,'DesignMethod','kaiserwin');
 
-Fpass = 4; % 2*Fpass(Hz)/sampling f(Hz) in normalized freq
-Fstop = 2; % 2*Fstop(Hz)/sampling f(Hz) in normalized freq
-Highpass = designfilt('highpassfir', ...
-    'PassbandFrequency',2*Fpass/Fs,'StopbandFrequency',2*Fstop/Fs, ...
-    'PassbandRipple',1,'StopbandAttenuation',60, ...
-    'DesignMethod','equiripple');
+% AM Modified 26 Oct 2016: Using Signal-MovingAverage(Delayed) instead
+% Fpass = 4; % 2*Fpass(Hz)/sampling f(Hz) in normalized freq
+% Fstop = 2; % 2*Fstop(Hz)/sampling f(Hz) in normalized freq
+% Highpass = designfilt('highpassfir', ...
+%     'PassbandFrequency',2*Fpass/Fs,'StopbandFrequency',2*Fstop/Fs, ...
+%     'PassbandRipple',1,'StopbandAttenuation',60, ...
+%     'DesignMethod','equiripple');
 % Highpass = designfilt('highpassfir', ...
 %     'PassbandFrequency',2*Fpass/Fs,'StopbandFrequency',2*Fstop/Fs, ...
 %     'PassbandRipple',0.5,'StopbandAttenuation',65,...
@@ -46,12 +52,11 @@ Highpass = designfilt('highpassfir', ...
 % Visualize the filter
 % fvtool(Lowpass);
 
+% AM Modified 25 Oct 2016: Intuitively and quantitatively, shouldn’t/doesn’t affect FFT
+% For testing, no need to store normalization constant from training
 % Normalize (Zero mean)
-Y = Y - mean(Y);
-Z = Z - mean(Z);
-% Normalize (Zero mean and unit variance)
-% Y = zscore(Y);
-% Z = zscore(Z);
+% Y = Y - mean(Y);
+% Z = Z - mean(Z);
 arc = [];
 
 % lowpass filter and arc calculation for gross movement
@@ -62,11 +67,15 @@ Y_lp = filtfilt(Lowpass,Y);
 
 if (plotOption)
     xMax = timeStamp(end)+5;
+    yMin = min(Y);
+    yMax = max(Y);
+end
+if (plotOption)
     figure(fileId);subplot(5,1,1);plot(timeStamp,Y);ylabel('Y');grid on;
-    axis([0 xMax -1 1]);
+    axis([0 xMax yMin yMax]);
     title('Preprocessing');
     figure(fileId);subplot(5,1,2);plot(timeStamp,Y_lp);ylabel('Y Low-passed');grid on;
-    axis([0 xMax -1 1]);
+    axis([0 xMax yMin yMax]);
 end
 
 % Find troughs to find periods
@@ -79,7 +88,7 @@ if (plotOption)
     plot(timeStamp,Y_lp);hold on;
     plot(timeStamp(locsTroughs),Y_lp(locsTroughs),'or'); 
     hold off;grid on;
-    axis([0 xMax -1 1]);
+    axis([0 xMax yMin yMax]);
 end
 
 
@@ -111,10 +120,11 @@ else
         indicesToRemove = [];
         distBetnTroughs = locsTroughs(2:end)-locsTroughs(1:end-1);
 
-    %     fprintf('FileId %d Pump stroke period (secs): Avg %.1f, 1SD %.1f, Med %.1f\n',...
-    %         fileId,mean(distBetnTroughs/Fs),std(distBetnTroughs/Fs),median(distBetnTroughs/Fs));
+        fprintf('FileId %d Pump stroke period (secs): Avg %.1f, 1SD %.1f, Med %.1f\n',...
+            fileId,mean(distBetnTroughs/Fs),std(distBetnTroughs/Fs),median(distBetnTroughs/Fs));
 
         medDistBetnTroughs = median(distBetnTroughs);
+        % Define .5*medDistBetnTroughs < typicalTroughs < 1.5*medDistBetnTroughs
         atypicalLocsTroughs = find(distBetnTroughs>(1+distBetnTroughsThres)*medDistBetnTroughs...
             | distBetnTroughs<distBetnTroughsThres*medDistBetnTroughs==1);
         for idx=1:size(atypicalLocsTroughs,1)
@@ -163,43 +173,33 @@ else
         % timeStamp(indicesToRemove) = [];
 
         % Apply highpass filter to whole recording
-        Y_hp = filtfilt(Highpass, Y); 
-%         % Moving average filter coeff
-%         a = 1;
-%         b = [1/4 1/4 1/4 1/4];
-%         Y_mv = filter(b,a,Y);
-%         Y_hp = Y-Y_mv;
-%         if (plotOption)
-%             figure(fileId);subplot(5,1,5);plot(timeStamp,Y_hp);ylabel('Y High-passed');grid on; 
-%             axis([0 xMax -.25 .25]);
-%             xlabel('Time (s)');
-%         end         
-%         
-%         % Plot diff between filtfilt and HPF=LPF-MA
-%         xMax = timeStamp(end)+5;
-%         figure(10);
-%         subplot(2,1,1);
-%         plot(timeStamp,Y_hp);grid on;
-%         ylabel('Y High-passed');         
-%         xlabel('Time (s)');
-%         
-%         % Moving average filter coeff
-%         a = 1;
-%         b = [1/4 1/4 1/4 1/4];
-%         Y_mv = filter(b,a,Y);
-%         Y_hpma = Y-Y_mv;
-%         hold on;
-%         subplot(2,1,1);
-%         plot(timeStamp,Y_hpma,'r');
-%         axis([0 xMax -.25 .25]);
-%         hold off;
-%         
-%         figure(10);
-%         subplot(2,1,2);
-%         plot(timeStamp,Y_hp-Y_hpma);
-%         axis([0 xMax -.25 .25]);
-%         drawnow;
-%         pause(.2);        
+        % AM Modified 25 Oct 2016: Using a simpler HPF with a view to
+        % implement as a C-code in MPLAB 
+%         % MATLAB's FIR followed by filtfilt (takes care of phase shift)
+%         Y_hp = filtfilt(Highpass, Y);         
+        % HPF = Signal - LPF(moving average)
+        Y_hp = filterHpfFirUsingLpfMaPhaseCorrect(Y,plotOption);
+        if (plotOption)
+            figure(fileId);subplot(5,1,5);plot(timeStamp,Y_hp);ylabel('Y High-passed');grid on; 
+            axis([0 xMax -.25 .25]);
+            xlabel('Time (s)');                      
+%             % Plot diff between filtfilt and HPF=LPF-MA            
+%             % Moving average filter coeff   
+%             figure(fileId+100);subplot(3,1,2); 
+%             plot(timeStamp,Y_hp,'b');
+%             hold on;            
+%             plot(timeStamp,Y_hpma,'r');
+%             axis([0 xMax -.4 .4]);
+%             hold off;
+%             legend('Yhp','Yhpma');
+% 
+%             figure(fileId+100);subplot(3,1,3);
+%             plot(timeStamp,Y_hp-Y_hpma);
+%             axis([0 xMax -.4 .4]);            
+%             legend('Yhp-Yhpma');
+%             suptitle('Yhp vs. Yhpma');
+            drawnow;
+        end        
     end
 end
 

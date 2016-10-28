@@ -1,7 +1,12 @@
 clear
 close all
 
-% AM Last Modified 24/08/2016
+% 28/10/2016 AM Modified: 
+% Parameters bundled under preprocFeatOptions
+% Downsample function added: wiimoteRecordingsDownsampleByMean.m
+% Inside wiimoteRecordingsPreprocessFixedLen.m function, HPF via
+% LPF(MovAvg)using filterHpfFirUsingLpfMaPhaseCorrect.m function
+% 
 %
 % Notes (PLEAE READ THESE NOTES!)
 % Comment/uncomment the start of for loop corresponding to the WDT ID
@@ -34,41 +39,55 @@ close all
 % create/save a dataset that will be used by ndtoolboxWorkspace.m script to
 % perform classification
 
-% For each window in the clip, size of windows and their overlap = 
-% Trade off between frequency/time resolution and smoothness
-NFFT = 256; % At Fs = 96 Hz and Median pump stroke period = 1.2s, 512 samples = 4.5 pump strokes
-maxPeriodLenAdhoc = 150; % When spectra generated using wiimoteRecordingsPreprocessPerPeriod.m
-overlapFrac = .5; % .5*NFFT, When spectra generated using wiimoteRecordingsFftFixedLen.m
-
 % Path to data
 rawDataPath = 'C:\Users\engs1602\research\data\Data Feb-Mar 2016\Raw Data - wiimote';
 
 % Choose which accelerometer signal to use 
-accelerometerSignal = 'Y';
-% accelerometerSignal = 'Z'; 
+% preprocFeatOptions.accelerometerSignal = 'Y';
+preprocFeatOptions.accelerometerSignal = 'Z'; 
+
+% Choose downsample factor
+preprocFeatOptions.downsampleFactor = 2;
+% If the signal is downsampled, Fs will change
+preprocFeatOptions.Fs = 96/preprocFeatOptions.downsampleFactor;  % Sampling Frequency
 
 % Choose which preprocessing technique to use:
 % (I) wiimoteRecordingsPreprocessPerPeriod.m - Preprocesses signal to do FFT per period
 % (II) wiimoteRecordingsPreprocessFixedLen.m - Preprocesses signal to do fixed length FFT with overlapping window
-% preprocessMethod = 'PerPeriod';
-preprocessMethod = 'FixedLen';
+% preprocFeatOptions.preprocessMethod = 'PerPeriod';
+preprocFeatOptions.preprocessMethod = 'FixedLen';
+% Preproc ad-hoc options
+preprocFeatOptions.thresholdToFindPeaks = .25; % threshold used when calling findpeaks.m
+preprocFeatOptions.distBetnTroughsThres = 0.5; % median +/- 0.5*median
+preprocFeatOptions.minNumOfTroughsInRecording = 3; % In order to consider this recording
+
+% Scaling factor to scale up and round accelerometer signals to make
+% portable in PIC18 MPLAB implementation
+preprocFeatOptions.scaleFactorIntContraint = 1000;
 
 % Choose which method to use to generate spectra:
 % (I) wiimoteRecordingsFftPerPeriod - FFT per period
 % (II) wiimoteRecordingsFftFixedLen.m - FFT fixed length with overlapping windows
 % (III) wiimoteRecordingsSpectrogram.m - Spectrogram with overlapping windows
-% spectraGenMethod = 'FftPerPeriod';
-spectraGenMethod = 'FftFixedLen';
-% spectraGenMethod = 'Spectrogram';
+% preprocFeatOptions.spectraGenMethod = 'FftPerPeriod';
+preprocFeatOptions.spectraGenMethod = 'FftFixedLen';
+% preprocFeatOptions.spectraGenMethod = 'Spectrogram';
+% Feat generation options
+% For each window in the clip, size of windows and their overlap = 
+% Trade off between frequency/time resolution and smoothness
+preprocFeatOptions.NFFT = 256; % At Fs = 96 Hz and Median pump stroke period = 1.2s, 512 samples = 4.5 pump strokes. If downsampled by 2, 256 samples = 4.5 strokes.
+preprocFeatOptions.maxPeriodLenAdhoc = 150; % When spectra generated using wiimoteRecordingsPreprocessPerPeriod.m
+preprocFeatOptions.overlapFrac = .5; % .5*preprocFeatOptions.NFFT, When spectra generated using wiimoteRecordingsFftFixedLen.m
 
 % Save figure options (Will need to modify path below as required)
-saveFigureOption = false;
+preprocFeatOptions.saveFigureOption = false;
 
 % Begin code
 % Initialize following to help with plotting later
 WDTidVec = [];
 fileIdVec = [];
 idx = 1;
+spectraNN = [];
 spectra = [];
 timeStampWindow = [];
 
@@ -104,62 +123,55 @@ for WDTid = WDTids
     % look up fileIds corresponding to WDTid from the XLS spreadsheet
     fileIdsThisWDT = fileIdLookupTableFun(WDTid)';        
     if ~any(isnan(fileIdsThisWDT))
-        Yall = [];
-        Zall = [];
-        fileIdIndices= [];
         for fileId=fileIdsThisWDT
             fprintf('\t File ID %d\n',fileId);
             file = fopen(fullfile(rawDataPath,sprintf('%d.txt',fileId)),'rt');
             raw = textscan(file, '%f:%f:%f:%f \t %f \t %f \t %f \t %f \t %f \t');
-            fclose(file);
+            fclose(file);            
             timeStamp = raw{4}/1000 + raw{3} + 60*raw{2};
             Y = raw{6}; 
-            Z = raw{7};            
+            Z = raw{7};
+            
+            % 28/10/2016 AM Modified: Housekeeping (remove clutter): X = either Y or Z 
+            % Choose accelerometer signal
+            if strcmp(preprocFeatOptions.accelerometerSignal,'Y')
+                X = Y;
+            elseif strcmp(preprocFeatOptions.accelerometerSignal,'Z') 
+                X = Z;
+            end
+
+            % AM Modified 25 Oct 2016
+            % Downsample by using taking average of consecutive samples
+            % But will remove the high-freq component!!! Does it matter???
+            preprocFeatOptions.plotOption = false;
+            [X,timeStamp] = wiimoteRecordingsDownsampleByMean(X,timeStamp,preprocFeatOptions);            
        
             % Preprocess:
             % LPF >> Find peaks >> Remove the ends of the original signal >> HPF
             % Currently, not using the output "arc" to compute speed.    
-            plotOption = false;
-            % Y accelerometer signal
-            if strcmp(accelerometerSignal,'Y')                
-                if strcmp(preprocessMethod,'PerPeriod')
-                    [Y,Y_hp,arc,locsPeriod,timeStampThisRec] = wiimoteRecordingsPreprocessPerPeriod(Y,Z,timeStamp,fileId,plotOption);
-                elseif strcmp(preprocessMethod,'FixedLen')
-                    [Y,Y_hp,arc,timeStampThisRec] = wiimoteRecordingsPreprocessFixedLen(Y,Z,timeStamp,fileId,NFFT,plotOption);
-                end
-            % Z accelerometer signal
-            elseif strcmp(accelerometerSignal,'Z')    
-                if strcmp(preprocessMethod,'PerPeriod')
-                    [Z,Z_hp,arc,locsPeriod,timeStampThisRec] = wiimoteRecordingsPreprocessPerPeriod(Z,Y,timeStamp,fileId,plotOption);
-                elseif strcmp(preprocessMethod,'FixedLen')
-                    [Z,Z_hp,arc,timeStampThisRec] = wiimoteRecordingsPreprocessFixedLen(Z,Y,timeStamp,fileId,NFFT,plotOption);
-                end
+            preprocFeatOptions.plotOption = true;            
+            if strcmp(preprocFeatOptions.preprocessMethod,'PerPeriod')
+                [X,X_hp,arc,locsPeriod,timeStampThisRec] = wiimoteRecordingsPreprocessPerPeriod(X,[],timeStamp,fileId,preprocFeatOptions);
+            elseif strcmp(preprocFeatOptions.preprocessMethod,'FixedLen')                    
+                [X,X_hp,arc,timeStampThisRec] = wiimoteRecordingsPreprocessFixedLen(X,[],timeStamp,fileId,preprocFeatOptions);
             end
-%             keyboard;
+
+%             % 28/10/2016 AM Modified: TO make portable for PIC18 MPLABX
+%             % Scale and round the filtered accelerometer signals
+%             X = round(preprocFeatOptions.scaleFactorIntContraint*X);
+%             X_hp = round(preprocFeatOptions.scaleFactorIntContraint*X_hp);
 
             % Generate Spectra:
             % Currently, not using the input "arc", which is required to compute speed.
             % Consequently, not getting the output "spd"
             % "timeStampWindow" = time stamp may not correspond to true time stamp due to preprocessing (Need to verify)
-            plotOption = false;
-            % Y accelerometer signal
-            if strcmp(accelerometerSignal,'Y')
-                if strcmp(spectraGenMethod ,'FftPerPeriod')
-                    [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsFftPerPeriod(Y,Y_hp,timeStampThisRec,arc,locsPeriod,NFFT,maxPeriodLenAdhoc,fileId,plotOption);        
-                elseif strcmp(spectraGenMethod ,'FftFixedLen')
-                    [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsFftFixedLen(Y,Y_hp,timeStampThisRec,arc,NFFT,overlapFrac,fileId,plotOption);        
-                elseif strcmp(spectraGenMethod ,'Spectrogram')
-                    [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsSpectrogram(Y,Y_hp,timeStampThisRec,arc,NFFT,overlapFrac,fileId,plotOption);        
-                end
-            % Z accelerometer signal
-            elseif strcmp(accelerometerSignal,'Z')        
-                if strcmp(spectraGenMethod ,'FftPerPeriod')
-                    [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsFftPerPeriod(Z,Z_hp,timeStampThisRec,arc,locsPeriod,NFFT,maxPeriodLenAdhoc,fileId,plotOption);
-                elseif strcmp(spectraGenMethod ,'FftFixedLen')
-                    [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsFftFixedLen(Z,Z_hp,timeStampThisRec,arc,NFFT,overlapFrac,fileId,plotOption); 
-                elseif strcmp(spectraGenMethod ,'Spectrogram')
-                    [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsSpectrogram(Z,Z_hp,timeStampThisRec,arc,NFFT,overlapFrac,fileId,plotOption);  
-                end
+            preprocFeatOptions.plotOption = true;                  
+            if strcmp(preprocFeatOptions.spectraGenMethod ,'FftPerPeriod')
+                [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsFftPerPeriod(X,X_hp,timeStampThisRec,arc,locsPeriod,fileId,preprocFeatOptions); 
+            elseif strcmp(preprocFeatOptions.spectraGenMethod ,'FftFixedLen')                    
+                [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsFftFixedLen(X,X_hp,timeStampThisRec,arc,fileId,preprocFeatOptions); 
+            elseif strcmp(preprocFeatOptions.spectraGenMethod ,'Spectrogram')
+                [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsSpectrogram(X,X_hp,timeStampThisRec,arc,fileId,preprocFeatOptions); 
             end
             lenThisFile = size(spectraThisRec,2);
 
@@ -170,11 +182,12 @@ for WDTid = WDTids
         end        
     end
 end
+keyboard;
 
 %%
 % Once the spectra is generated above, plot the spectra, etc.
-plotOption = true;
-if plotOption
+preprocFeatOptions.plotOption = true;
+if preprocFeatOptions.plotOption
     % Labels - Based on prefix/postfix
     % Prefix/postfix labels are not entirely indicative of pump working/not
     % working. Pump working/not-working is also sorta dependent case basis.
@@ -238,14 +251,14 @@ if plotOption
     ylabel('Prefix/postfix label');
     xlabel('Window count across all recordings');    
     
-    if (saveFigureOption)
+    if (preprocFeatOptions.saveFigureOption)
         % Save plot
-        pathName = fullfile('C:\Users\engs1602\research\meetings\smallGroup\20160901ManandharAnalysisCodeUpdate\plots',sprintf('caseStudyPumpWDTid%dAcc%s',WDTid,accelerometerSignal));
-        plotName = fullfile(pathName,sprintf('spectraFftFixedLenWdtid%dAcc%s',WDTid,accelerometerSignal));
+        pathName = 'C:\Users\engs1602\research\meetings\smallGroup\20161013ManandharAnalysisCodeUpdate\plots\expNormBeforeFilterFft';
+        plotName = fullfile(pathName,sprintf('spectraFftN256Wdtid%dAcc%s',WDTid,preprocFeatOptions.accelerometerSignal));
         fig = gcf;
         fig.PaperPositionMode = 'auto';    
         print(plotName,'-dpng','-r0');
-        plotName = fullfile(pathName,sprintf('spectraFftFixedLenWdtid%dAcc%s.fig',WDTid,accelerometerSignal));
+        plotName = fullfile(pathName,sprintf('spectraFftN256Wdtid%dAcc%s.fig',WDTid,preprocFeatOptions.accelerometerSignal));
         savefig(plotName);
     end
 end
@@ -273,11 +286,13 @@ data.x = spectraDB(56:2:64,:)';
 % Hand-pick (lower-freq), FFT per period
 % data.x = spectraDB(12:3:24,:)';
 % Hand-pick (higher-freq), Fixed-length (512) FFT 
-% data.x = spectraDB(111:4:130,:)';
+% data.x = spectraDB(112:4:130,:)';
 data.y = isnor;
-% data.name = {sprintf('WDT32Rec%s_Freq56_2_64dB',accelerometerSignal)};
-% save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161013ManandharAnalysisCodeUpdate\plots\',sprintf('WDT32Rec%s_Freq56_2_64dB',accelerometerSignal)),'data');
-% 
+saveDataOption = false;
+if (saveDataOption)
+    data.name = {sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)};
+    save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161025ManandharAnalysisCodeUpdate\plots\verifyAMcodeMods\',sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)),'data');
+end
 figure(3);
 subplot(3,1,1:2);imagesc(data.x');caxis(prctile(spectraClippedDB(:), [5,95]))
 subplot(3,1,3);plot(data.y);axis([0 size(data.x,1) 0 1]);

@@ -1,4 +1,4 @@
-function [spectra,spd,timeStampWindow] = wiimoteRecordingsFftPerPeriod(Y,Y_hp,timeStamp,arc,locsPeriod,NFFT,maxClipLenAdhoc,rec,plotOption)
+function [spectra,spd,timeStampWindow] = wiimoteRecordingsFftPerPeriod(Y,Y_hp,timeStamp,arc,locsPeriod,fileId,preprocFeatOptions)
 % AM Last Modified 24/08/2016
 % This function is called by the spectrawriteupAMmodifed.m script
 % Does FFT per period
@@ -6,6 +6,11 @@ function [spectra,spd,timeStampWindow] = wiimoteRecordingsFftPerPeriod(Y,Y_hp,ti
 % which is required to compute speed here 
 % (uncomment the corresponding lines in wiimoteRecordingsPreprocess.m to compute arc 
 % and wiimoteRecordingsFftPerPeriod.m to compute speed)
+
+% 28/10/2016 AM Modified: Parameters bundled under preprocFeatOptions
+NFFT = preprocFeatOptions.NFFT;
+maxClipLenAdhoc = preprocFeatOptions.maxClipLenAdhoc; % .5*preprocFeatOptions.NFFT
+plotOption = preprocFeatOptions.plotOption;
 
 fprintf('\t\tGenerating spectra...\n');
 
@@ -18,10 +23,10 @@ timeStampWindow = [];
 while locIdx<length(locsPeriod)
     intstart = locsPeriod(locIdx);
     intend = locsPeriod(locIdx+1);
-%     fprintf('fileId=%d, %d %d clipLen=%d clipLen<=NFFT=%d\n',rec,intstart,intend,intend-intstart+1,intend-intstart+1<=NFFT)               
+%     fprintf('fileId=%d, %d %d clipLen=%d clipLen<=NFFT=%d\n',fileId,intstart,intend,intend-intstart+1,intend-intstart+1<=NFFT)               
 
     % Skip this unusually long period (potentially due to e.g. switch
-    % between pump users during the same recording)
+    % between pump users during the same fileIdording)
     if (intend-intstart+1>NFFT || intend-intstart+1>=maxClipLenAdhoc)
         disp('cliplength>NFFT!');        
         locIdx = locIdx+1;                    

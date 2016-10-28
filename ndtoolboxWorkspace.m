@@ -66,8 +66,8 @@ paramsPreset =[];
 % whichdata = 'pump18RecPartial12';
 % load('C:\Users\engs1602\research\data\pumpWiimoteND\pump18RecPartial12');
 % Pump 32
-whichdata = 'WDT32RecZ_HpfMaN256FlFreq56_2_64dB';
-load('C:\Users\engs1602\research\meetings\smallGroup\20161013ManandharAnalysisCodeUpdate\plots\WDT32RecZ_HpfMaN256FlFreq56_2_64dB');
+whichdata = 'WDT32RecZ_HpfMaDelNds256FlFreq56_2_64dB';
+load('C:\Users\engs1602\research\meetings\smallGroup\20161025ManandharAnalysisCodeUpdate\plots\verifyAMcodeMods\WDT32RecZ_HpfMaDelNds256FlFreq56_2_64dB');
 fprintf('\nLoading data set %s...\n', whichdata);
 alldataOri = data.x; % numdata by numftrs
 classlabels = data.y; % numdata by 1, class labels = 1, 2

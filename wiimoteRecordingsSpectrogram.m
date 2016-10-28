@@ -1,4 +1,4 @@
-function [spectra,spd,timeStampWindow] = wiimoteRecordingsSpectrogram(Y,Y_hp,timeStampThisRec,arc,NFFT,overlapFrac,fileId,plotOption)
+function [spectra,spd,timeStampWindow] = wiimoteRecordingsSpectrogram(Y,Y_hp,timeStampThisRec,arc,fileId,preprocFeatOptions)
 % AM Last Modified 24/08/2016
 % This function is called by the wiimoteRecordingsAnalysisScript.m script
 % Generates spectrogram using fixed length overlapping window fourier transform 
@@ -6,6 +6,10 @@ function [spectra,spd,timeStampWindow] = wiimoteRecordingsSpectrogram(Y,Y_hp,tim
 % which is required to compute speed here 
 % (uncomment the corresponding lines in wiimoteRecordingsPreprocessFixedLen.m to compute arc 
 % and wiimoteRecordingsSpectrogram.m to compute speed)
+
+% 28/10/2016 AM Modified: Parameters bundled under preprocFeatOptions
+NFFT = preprocFeatOptions.NFFT;
+overlapFrac = preprocFeatOptions.overlapFrac; % .5*preprocFeatOptions.NFFT
 
 fprintf('\t\tGenerating spectra...\n');
 

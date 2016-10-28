@@ -1,4 +1,4 @@
-function [Y,Y_hp,arc,locsTroughs,timeStamp] = wiimoteRecordingsPreprocessPerPeriod(Y,Z,timeStamp,fileId,plotOption)
+function [Y,Y_hp,arc,locsTroughs,timeStamp] = wiimoteRecordingsPreprocessPerPeriod(Y,Z,timeStamp,fileId,preprocFeatOptions)
 % AM Last Modified 24/08/2016
 % This function is called by the wiimoteRecordingsAnalysisScript.m script
 % Does all the preprocessing
@@ -7,19 +7,22 @@ function [Y,Y_hp,arc,locsTroughs,timeStamp] = wiimoteRecordingsPreprocessPerPeri
 % (uncomment the corresponding lines to compute arc)
 % Caution - Involves various adhoc numbers/parameters!
 
-fprintf('\t\tPreprocessing...\n');
+downsampleFactor = preprocFeatOptions.downsampleFactor;
+thresholdToFindPeaks = preprocFeatOptions.thresholdToFindPeaks; % threshold used when calling findpeaks.m
+minNumOfTroughsInRecording = preprocFeatOptions.minNumOfTroughsInRecording; % In order to consider this recording
+Fs = preprocFeatOptions.Fs; % sampling frequency will change depending on downsample factor
+plotOption = preprocFeatOptions.plotOption;
 
-thresholdToFindPeaks = .25; % threshold used when calling findpeaks.m
-minNumOfTroughsInRecording = 3; % In order to consider this recording
+fprintf('\t\tPreprocessing...\n');
 
 %General gist: 
 %Design of high pass filte:Done fairly arbitrarily, based on what looks OK
-Fs = 96;  % Sampling Frequency
 
 % Zero-phase filtering
 % http://uk.mathworks.com/help/signal/ref/filtfilt.html
-Fpass = 2; % 2*Fpass(Hz)/sampling f(Hz) in normalized freq
-Fstop = 4; % 2*Fstop(Hz)/sampling f(Hz) in normalized freq
+% AM Modified 27 Oct 2016: If the signal is downsampled, Fpass, Fstop will change
+Fpass = 2/downsampleFactor; % 2*Fpass(Hz)/sampling f(Hz) in normalized freq
+Fstop = 4/downsampleFactor; % 2*Fstop(Hz)/sampling f(Hz) in normalized freq
 Lowpass = designfilt('lowpassfir', ...
     'PassbandFrequency',2*Fpass/Fs,'StopbandFrequency',2*Fstop/Fs, ...
     'PassbandRipple',1,'StopbandAttenuation',60, ...

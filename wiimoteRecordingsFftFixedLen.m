@@ -1,4 +1,4 @@
-function [spectra,spd,timeStampWindow] = wiimoteRecordingsFftFixedLen(Y,Y_hp,timeStampThisRec,arc,NFFT,overlapFrac,fileId,plotOption)
+function [spectra,spd,timeStampWindow] = wiimoteRecordingsFftFixedLen(Y,Y_hp,timeStampThisRec,arc,fileId,preprocFeatOptions)
 % AM Last Modified 24/08/2016
 % This function is called by the wiimoteRecordingsAnalysisScript.m script
 % Performs fixed length FFT with overlapping window (STFT)
@@ -7,7 +7,17 @@ function [spectra,spd,timeStampWindow] = wiimoteRecordingsFftFixedLen(Y,Y_hp,tim
 % (uncomment the corresponding lines in wiimoteRecordingsPreprocessFixedLen.m to compute arc 
 % and wiimoteRecordingsFftFixedLen.m to compute speed)
 
+% 28/10/2016 AM Modified: Parameters bundled under preprocFeatOptions
+NFFT = preprocFeatOptions.NFFT;
+overlapFrac = preprocFeatOptions.overlapFrac; % .5*preprocFeatOptions.NFFT
+plotOption = preprocFeatOptions.plotOption;
+
 fprintf('\t\tGenerating spectra...\n');
+
+% AM Modified 25 Oct 2016: Simulate input/output of MPLAB C-code FFT
+% implementation, i.e. 
+% Input to FFT = round(scaled by 1000)?
+% Output of FFT = round(mag(fft))
 
 if length(Y_hp)<NFFT
     spd = [];
@@ -29,7 +39,6 @@ else
         
         % Apply FFT per window to the highpassed Y signal         
         Yfhat = fft(Y_hp(idxStart:idxEnd), NFFT);
-        keyboard;
         
         % save this up to the nyquist limit. 
         spectra(:,nWin) = abs(Yfhat(1:NFFT/2));
