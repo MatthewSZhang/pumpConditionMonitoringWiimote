@@ -8,7 +8,6 @@ function [Y,Y_hp,arc,timeStamp] = wiimoteRecordingsPreprocessFixedLen(Y,Z,timeSt
 % Caution - Involves various adhoc numbers/parameters!
 
 % 28/10/2016 AM Modified: Parameters bundled under preprocFeatOptions
-downsampleFactor = preprocFeatOptions.downsampleFactor;
 NFFT = preprocFeatOptions.NFFT;
 thresholdToFindPeaks = preprocFeatOptions.thresholdToFindPeaks; % threshold used when calling findpeaks.m
 distBetnTroughsThres = preprocFeatOptions.distBetnTroughsThres; % median +/- 0.5*median
@@ -23,9 +22,9 @@ fprintf('\t\tPreprocessing...\n');
 
 % Zero-phase filtering
 % http://uk.mathworks.com/help/signal/ref/filtfilt.html
-% AM Modified 27 Oct 2016: If the signal is downsampled, Fpass, Fstop will change
-Fpass = 2/downsampleFactor; % 2*Fpass(Hz)/sampling f(Hz) in normalized freq
-Fstop = 4/downsampleFactor; % 2*Fstop(Hz)/sampling f(Hz) in normalized freq
+% AM Modified 27 Oct 2016: If the signal is downsampled, Fpass, Fstop should change?
+Fpass = 2;% 2*Fpass(Hz)/sampling f(Hz) in normalized freq
+Fstop = 4;% 2*Fstop(Hz)/sampling f(Hz) in normalized freq
 Lowpass = designfilt('lowpassfir', ...
     'PassbandFrequency',2*Fpass/Fs,'StopbandFrequency',2*Fstop/Fs, ...
     'PassbandRipple',1,'StopbandAttenuation',60, ...

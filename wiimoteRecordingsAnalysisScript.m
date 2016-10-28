@@ -156,16 +156,16 @@ for WDTid = WDTids
                 [X,X_hp,arc,timeStampThisRec] = wiimoteRecordingsPreprocessFixedLen(X,[],timeStamp,fileId,preprocFeatOptions);
             end
 
-%             % 28/10/2016 AM Modified: TO make portable for PIC18 MPLABX
-%             % Scale and round the filtered accelerometer signals
-%             X = round(preprocFeatOptions.scaleFactorIntContraint*X);
-%             X_hp = round(preprocFeatOptions.scaleFactorIntContraint*X_hp);
+            % 28/10/2016 AM Modified: TO make portable for PIC18 MPLABX
+            % Scale and round the filtered accelerometer signals
+            X = round(preprocFeatOptions.scaleFactorIntContraint*X);
+            X_hp = round(preprocFeatOptions.scaleFactorIntContraint*X_hp);            
 
             % Generate Spectra:
             % Currently, not using the input "arc", which is required to compute speed.
             % Consequently, not getting the output "spd"
             % "timeStampWindow" = time stamp may not correspond to true time stamp due to preprocessing (Need to verify)
-            preprocFeatOptions.plotOption = true;                  
+            preprocFeatOptions.plotOption = false;                  
             if strcmp(preprocFeatOptions.spectraGenMethod ,'FftPerPeriod')
                 [spectraThisRec,spdThisRec,timeStampWindowThisRec] = wiimoteRecordingsFftPerPeriod(X,X_hp,timeStampThisRec,arc,locsPeriod,fileId,preprocFeatOptions); 
             elseif strcmp(preprocFeatOptions.spectraGenMethod ,'FftFixedLen')                    
@@ -182,7 +182,6 @@ for WDTid = WDTids
         end        
     end
 end
-keyboard;
 
 %%
 % Once the spectra is generated above, plot the spectra, etc.
@@ -219,7 +218,8 @@ if preprocFeatOptions.plotOption
     figure(2);
     subplot(5,1,1:2);imagesc(spectraClippedDB); 
 %     caxis(prctile(spectraClippedDB(:), [0,100]))
-    caxis([-1 8]);%colorbar;
+%     caxis([-1 8]);%colorbar;
+    caxis([25 35]);%colorbar;
     set(gca,'YDir','normal'); ylabel('Frequency'); 
     title(sprintf('|FFT| dB (%s)',conditionLabels{condition}));
     
@@ -291,7 +291,7 @@ data.y = isnor;
 saveDataOption = false;
 if (saveDataOption)
     data.name = {sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)};
-    save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161025ManandharAnalysisCodeUpdate\plots\verifyAMcodeMods\',sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)),'data');
+    save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161025ManandharAnalysisCodeUpdate\plots\verifyAMmodified28102016\',sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)),'data');
 end
 figure(3);
 subplot(3,1,1:2);imagesc(data.x');caxis(prctile(spectraClippedDB(:), [5,95]))
