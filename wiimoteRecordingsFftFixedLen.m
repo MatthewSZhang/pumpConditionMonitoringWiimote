@@ -41,7 +41,7 @@ else
         Yfhat = fft(Y_hp(idxStart:idxEnd), NFFT);
         
         % save this up to the nyquist limit. 
-        spectra(:,nWin) = abs(Yfhat(1:NFFT/2));
+        spectra(:,nWin) = abs(Yfhat(1:NFFT/2));       
     
         if plotOption            
             figure(100);

@@ -12,6 +12,7 @@ NFFT = preprocFeatOptions.NFFT;
 thresholdToFindPeaks = preprocFeatOptions.thresholdToFindPeaks; % threshold used when calling findpeaks.m
 distBetnTroughsThres = preprocFeatOptions.distBetnTroughsThres; % median +/- 0.5*median
 minNumOfTroughsInRecording = preprocFeatOptions.minNumOfTroughsInRecording; % In order to consider this recording
+downsampleFactor = preprocFeatOptions.downsampleFactor;
 Fs = preprocFeatOptions.Fs; % sampling frequency will change depending on downsample factor
 plotOption = preprocFeatOptions.plotOption;
 
@@ -22,9 +23,9 @@ fprintf('\t\tPreprocessing...\n');
 
 % Zero-phase filtering
 % http://uk.mathworks.com/help/signal/ref/filtfilt.html
-% AM Modified 27 Oct 2016: If the signal is downsampled, Fpass, Fstop should change?
-Fpass = 2;% 2*Fpass(Hz)/sampling f(Hz) in normalized freq
-Fstop = 4;% 2*Fstop(Hz)/sampling f(Hz) in normalized freq
+% AM Modified 08/11/2016: If the signal is downsampled, Fpass, Fstop should change?
+Fpass = 2/downsampleFactor;% 2*Fpass(Hz)/sampling f(Hz) in normalized freq
+Fstop = 4/downsampleFactor;% 2*Fstop(Hz)/sampling f(Hz) in normalized freq
 Lowpass = designfilt('lowpassfir', ...
     'PassbandFrequency',2*Fpass/Fs,'StopbandFrequency',2*Fstop/Fs, ...
     'PassbandRipple',1,'StopbandAttenuation',60, ...
@@ -36,7 +37,7 @@ Lowpass = designfilt('lowpassfir', ...
 
 % 'PassbandRipple',0.5,'StopbandAttenuation',65,'DesignMethod','kaiserwin');
 
-% AM Modified 26 Oct 2016: Using Signal-MovingAverage(Delayed) instead
+% AM Modified 26 Oct 2016: Using Signal-MovingAverage(Phase-shift corrected) instead
 % Fpass = 4; % 2*Fpass(Hz)/sampling f(Hz) in normalized freq
 % Fstop = 2; % 2*Fstop(Hz)/sampling f(Hz) in normalized freq
 % Highpass = designfilt('highpassfir', ...
@@ -176,11 +177,11 @@ else
         % implement as a C-code in MPLAB 
 %         % MATLAB's FIR followed by filtfilt (takes care of phase shift)
 %         Y_hp = filtfilt(Highpass, Y);         
-        % HPF = Signal - LPF(moving average)
+        % HPF = Signal - LPF(moving average)        
         Y_hp = filterHpfFirUsingLpfMaPhaseCorrect(Y,plotOption);
         if (plotOption)
             figure(fileId);subplot(5,1,5);plot(timeStamp,Y_hp);ylabel('Y High-passed');grid on; 
-            axis([0 xMax -.25 .25]);
+            axis([0 xMax min(Y_hp) max(Y_hp)]);
             xlabel('Time (s)');                      
 %             % Plot diff between filtfilt and HPF=LPF-MA            
 %             % Moving average filter coeff   

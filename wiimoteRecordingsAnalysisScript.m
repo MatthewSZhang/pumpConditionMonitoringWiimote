@@ -51,19 +51,20 @@ preprocFeatOptions.downsampleFactor = 2;
 % If the signal is downsampled, Fs will change
 preprocFeatOptions.Fs = 96/preprocFeatOptions.downsampleFactor;  % Sampling Frequency
 
+% Scaling factor to scale up and round accelerometer signals to make
+% portable in PIC18 MPLAB implementation
+preprocFeatOptions.scaleFactorIntContraint = 1000;
+
 % Choose which preprocessing technique to use:
 % (I) wiimoteRecordingsPreprocessPerPeriod.m - Preprocesses signal to do FFT per period
 % (II) wiimoteRecordingsPreprocessFixedLen.m - Preprocesses signal to do fixed length FFT with overlapping window
 % preprocFeatOptions.preprocessMethod = 'PerPeriod';
 preprocFeatOptions.preprocessMethod = 'FixedLen';
 % Preproc ad-hoc options
-preprocFeatOptions.thresholdToFindPeaks = .25; % threshold used when calling findpeaks.m
+% AM Modified 8/11/2016
+preprocFeatOptions.thresholdToFindPeaks = .2*preprocFeatOptions.scaleFactorIntContraint; % threshold used when calling findpeaks.m
 preprocFeatOptions.distBetnTroughsThres = 0.5; % median +/- 0.5*median
 preprocFeatOptions.minNumOfTroughsInRecording = 3; % In order to consider this recording
-
-% Scaling factor to scale up and round accelerometer signals to make
-% portable in PIC18 MPLAB implementation
-preprocFeatOptions.scaleFactorIntContraint = 1000;
 
 % Choose which method to use to generate spectra:
 % (I) wiimoteRecordingsFftPerPeriod - FFT per period
@@ -121,7 +122,7 @@ for WDTid = WDTids
     fprintf('Analyzing data from WDT ID %d ...\n',WDTid);
     fprintf('File IDs for this WDT ID ...\n');
     % look up fileIds corresponding to WDTid from the XLS spreadsheet
-    fileIdsThisWDT = fileIdLookupTableFun(WDTid)';        
+    fileIdsThisWDT = fileIdLookupTableFun(WDTid)';   
     if ~any(isnan(fileIdsThisWDT))
         for fileId=fileIdsThisWDT
             fprintf('\t File ID %d\n',fileId);
@@ -146,20 +147,20 @@ for WDTid = WDTids
             preprocFeatOptions.plotOption = false;
             [X,timeStamp] = wiimoteRecordingsDownsampleByMean(X,timeStamp,preprocFeatOptions);            
        
+            % 08/11/2016 AM Modified: TO make portable for PIC18 MPLABX
+            % Scale and round the accelerometer signals after downsampling
+            % before preprocessing (i.e. filtering)
+            X = round(preprocFeatOptions.scaleFactorIntContraint*X);            
+
             % Preprocess:
             % LPF >> Find peaks >> Remove the ends of the original signal >> HPF
             % Currently, not using the output "arc" to compute speed.    
-            preprocFeatOptions.plotOption = true;            
+            preprocFeatOptions.plotOption = false;            
             if strcmp(preprocFeatOptions.preprocessMethod,'PerPeriod')
                 [X,X_hp,arc,locsPeriod,timeStampThisRec] = wiimoteRecordingsPreprocessPerPeriod(X,[],timeStamp,fileId,preprocFeatOptions);
             elseif strcmp(preprocFeatOptions.preprocessMethod,'FixedLen')                    
                 [X,X_hp,arc,timeStampThisRec] = wiimoteRecordingsPreprocessFixedLen(X,[],timeStamp,fileId,preprocFeatOptions);
-            end
-
-            % 28/10/2016 AM Modified: TO make portable for PIC18 MPLABX
-            % Scale and round the filtered accelerometer signals
-            X = round(preprocFeatOptions.scaleFactorIntContraint*X);
-            X_hp = round(preprocFeatOptions.scaleFactorIntContraint*X_hp);            
+            end            
 
             % Generate Spectra:
             % Currently, not using the input "arc", which is required to compute speed.
@@ -179,7 +180,7 @@ for WDTid = WDTids
             fileIdVec = cat(1,fileIdVec,fileId*ones(lenThisFile,1));
             WDTidVec = cat(1,WDTidVec,WDTid*ones(lenThisFile,1));
             timeStampWindow = cat(1,timeStampWindow,timeStampWindowThisRec);
-        end        
+        end  
     end
 end
 
@@ -219,7 +220,7 @@ if preprocFeatOptions.plotOption
     subplot(5,1,1:2);imagesc(spectraClippedDB); 
 %     caxis(prctile(spectraClippedDB(:), [0,100]))
 %     caxis([-1 8]);%colorbar;
-    caxis([25 35]);%colorbar;
+    caxis([25 45]);%colorbar;
     set(gca,'YDir','normal'); ylabel('Frequency'); 
     title(sprintf('|FFT| dB (%s)',conditionLabels{condition}));
     
@@ -290,8 +291,8 @@ data.x = spectraDB(56:2:64,:)';
 data.y = isnor;
 saveDataOption = false;
 if (saveDataOption)
-    data.name = {sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)};
-    save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161025ManandharAnalysisCodeUpdate\plots\verifyAMmodified28102016\',sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)),'data');
+    data.name = sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal);
+    save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161104ManandharAnalysisCodeUpdate\data\',sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)),'data');
 end
 figure(3);
 subplot(3,1,1:2);imagesc(data.x');caxis(prctile(spectraClippedDB(:), [5,95]))
