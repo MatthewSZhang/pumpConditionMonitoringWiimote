@@ -43,11 +43,11 @@ close all
 rawDataPath = 'C:\Users\engs1602\research\data\Data Feb-Mar 2016\Raw Data - wiimote';
 
 % Choose which accelerometer signal to use 
-% preprocFeatOptions.accelerometerSignal = 'Y';
-preprocFeatOptions.accelerometerSignal = 'Z'; 
+preprocFeatOptions.accelerometerSignal = 'Y';
+% preprocFeatOptions.accelerometerSignal = 'Z'; 
 
 % Choose downsample factor
-preprocFeatOptions.downsampleFactor = 2;
+preprocFeatOptions.downsampleFactor = 1;
 % If the signal is downsampled, Fs will change
 preprocFeatOptions.Fs = 96/preprocFeatOptions.downsampleFactor;  % Sampling Frequency
 
@@ -88,8 +88,8 @@ preprocFeatOptions.saveFigureOption = false;
 WDTidVec = [];
 fileIdVec = [];
 idx = 1;
-spectraNN = [];
 spectra = [];
+spd = [];
 timeStampWindow = [];
 
 % The following are condition labels based on field notes. Only to be used
@@ -150,7 +150,7 @@ for WDTid = WDTids
             % 08/11/2016 AM Modified: TO make portable for PIC18 MPLABX
             % Scale and round the accelerometer signals after downsampling
             % before preprocessing (i.e. filtering)
-            X = round(preprocFeatOptions.scaleFactorIntContraint*X);            
+            X = round(preprocFeatOptions.scaleFactorIntContraint*X);                        
 
             % Preprocess:
             % LPF >> Find peaks >> Remove the ends of the original signal >> HPF
@@ -159,7 +159,7 @@ for WDTid = WDTids
             if strcmp(preprocFeatOptions.preprocessMethod,'PerPeriod')
                 [X,X_hp,arc,locsPeriod,timeStampThisRec] = wiimoteRecordingsPreprocessPerPeriod(X,[],timeStamp,fileId,preprocFeatOptions);
             elseif strcmp(preprocFeatOptions.preprocessMethod,'FixedLen')                    
-                [X,X_hp,arc,timeStampThisRec] = wiimoteRecordingsPreprocessFixedLen(X,[],timeStamp,fileId,preprocFeatOptions);
+                [X,X_hp,arc,timeStampThisRec] = wiimoteRecordingsPreprocessFixedLen(X,Z,timeStamp,fileId,preprocFeatOptions);
             end            
 
             % Generate Spectra:
@@ -176,6 +176,7 @@ for WDTid = WDTids
             end
             lenThisFile = size(spectraThisRec,2);
 
+            spd = cat(1,spd,spdThisRec);
             spectra = cat(2,spectra,spectraThisRec);
             fileIdVec = cat(1,fileIdVec,fileId*ones(lenThisFile,1));
             WDTidVec = cat(1,WDTidVec,WDTid*ones(lenThisFile,1));
@@ -194,9 +195,9 @@ if preprocFeatOptions.plotOption
     % Better to confirm with Heloise/Farah
     isnor = ones(size(spectra,2),1);
     % WDT 18    
-%     isnor(fileIdVec<74) = 0;
+    isnor(fileIdVec<74) = 0;
     % WDT 32
-    isnor(fileIdVec<190) = 0;
+%     isnor(fileIdVec<190) = 0;
 
     freqStart = 1; 
     freqEnd = 128; 
@@ -219,7 +220,7 @@ if preprocFeatOptions.plotOption
     figure(2);
     subplot(5,1,1:2);imagesc(spectraClippedDB); 
 %     caxis(prctile(spectraClippedDB(:), [0,100]))
-%     caxis([-1 8]);%colorbar;
+    caxis([0 20]);%colorbar;
     caxis([25 45]);%colorbar;
     set(gca,'YDir','normal'); ylabel('Frequency'); 
     title(sprintf('|FFT| dB (%s)',conditionLabels{condition}));
@@ -250,7 +251,16 @@ if preprocFeatOptions.plotOption
 %     ylabel('Prefix/postfix label');
 %     xlabel('Period count across all recordings for Pump 32');
     ylabel('Prefix/postfix label');
-    xlabel('Window count across all recordings');    
+    xlabel('Window count across all recordings');  
+    
+%     subplot(5,1,4);plot(spd/preprocFeatOptions.Fs,'LineWidth',1.5);ylabel('Spd (deg/s)');grid minor;%axis([0 size(spectra,2) 0 max(spd)]); 
+%     ylabel('Prefix/postfix label');
+%     xlabel('Window count across all recordings');    
+%     
+%     figure(4); 
+%     hist(spd/preprocFeatOptions.Fs);
+%     xlabel('Spd (deg/s)');
+%     ylabel('No. of windows');
     
     if (preprocFeatOptions.saveFigureOption)
         % Save plot
@@ -291,8 +301,8 @@ data.x = spectraDB(56:2:64,:)';
 data.y = isnor;
 saveDataOption = false;
 if (saveDataOption)
-    data.name = sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal);
-    save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161104ManandharAnalysisCodeUpdate\data\',sprintf('WDT32Rec%s_HpfMaDelNds256FlFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)),'data');
+    data.name = sprintf('WDT32Rec%s_HpfMaDelNdsHamm256FlZPFreq56_2_64dB',preprocFeatOptions.accelerometerSignal);
+    save(fullfile('C:\Users\engs1602\research\meetings\smallGroup\20161104ManandharAnalysisCodeUpdate\data\',sprintf('WDT32Rec%s_HpfMaDelNdsHamm256FlZPFreq56_2_64dB',preprocFeatOptions.accelerometerSignal)),'data');
 end
 figure(3);
 subplot(3,1,1:2);imagesc(data.x');caxis(prctile(spectraClippedDB(:), [5,95]))

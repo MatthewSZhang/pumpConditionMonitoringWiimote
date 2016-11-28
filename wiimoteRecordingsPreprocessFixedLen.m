@@ -55,15 +55,29 @@ Lowpass = designfilt('lowpassfir', ...
 % AM Modified 25 Oct 2016: Intuitively and quantitatively, shouldn’t/doesn’t affect FFT
 % For testing, no need to store normalization constant from training
 % Normalize (Zero mean)
-% Y = Y - mean(Y);
-% Z = Z - mean(Z);
-arc = [];
+Y = Y - mean(Y);
+Z = Z - mean(Z);
 
 % lowpass filter and arc calculation for gross movement
 Y_lp = filtfilt(Lowpass,Y);
 % Uncomment the following to compute arc
-% Z_lp = filtfilt(Lowpass,Z);
+Z_lp = filtfilt(Lowpass,Z);
+arc = [];
 % arc = atand(Y_lp./(Z_lp+Z)); % Why?
+% arc = atand(Y_lp./(Z_lp)); % Why?
+    
+% Plot arc
+% figure(fileId);
+% xMax = timeStamp(end)+5;
+% yMin = min(Y_lp);
+% yMax = max(Y_lp);
+% subplot(3,1,1);plot(timeStamp,Y_lp);ylabel('Y_lp');grid on;
+% axis([0 xMax yMin yMax]);
+% subplot(3,1,2);plot(timeStamp,Z_lp);ylabel('Z_lp');grid on;
+% axis([0 xMax yMin yMax]);
+% subplot(3,1,3);plot(timeStamp,arc);ylabel('arc (degrees)');grid on;
+% axis([0 xMax -90 90]);
+% keyboard;
 
 if (plotOption)
     xMax = timeStamp(end)+5;

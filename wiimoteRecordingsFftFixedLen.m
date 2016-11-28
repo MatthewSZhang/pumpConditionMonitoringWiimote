@@ -25,21 +25,26 @@ if length(Y_hp)<NFFT
     timeStampWindow = [];
 else
     % FFT of accelerometry data overlapping windows
-    spd = [];
+%     spd = [];
     Nwindows = length((1:1-overlapFrac:floor(length(Y_hp)/NFFT))');
     % Find approximate corresponding time stamps    
     timeStampWindow = linspace(timeStampThisRec(NFFT/2),timeStampThisRec(end-NFFT/2),Nwindows)';        
     spectra = nan(NFFT/2,Nwindows);
+    spd = [];
+%     spd = nan(Nwindows,1);
         
     idx = 1;
     for nWin=1:Nwindows
         idxStart = (idx-1)*overlapFrac*NFFT+1;
         idxEnd = idxStart+NFFT-1;
     %     fprintf('%d %d %d\n',idx,idxStart,idxEnd);           
+
+%         % Speed = rate of change of angle (degrees or radians/ second)       
+%         spd(nWin) = sum(abs(diff(arc(idxStart:idxEnd))));
         
         % Apply FFT per window to the highpassed Y signal         
         Yfhat = fft(Y_hp(idxStart:idxEnd), NFFT);
-        
+
         % save this up to the nyquist limit. 
         spectra(:,nWin) = abs(Yfhat(1:NFFT/2));       
     
@@ -57,11 +62,26 @@ else
             figure(100);
             pause(.05);         
         end
-    
     %         % calculate amount of movement in the window
     %         spd(nWin,1) = sum(abs(diff(arc(intstart:intend))));      
         idx = idx+1;
     end
+
+%     figure(101);
+%     xMax = timeStampThisRec(end)+5;
+%     yMin = min(Y);
+%     yMax = max(Y);
+%     subplot(3,1,1);plot(timeStampThisRec,Y);grid on;grid minor;
+%     axis([0 xMax yMin yMax]);
+%     ylabel('Y');
+%     subplot(3,1,2);plot(timeStampThisRec,Y_hp);grid on;grid minor;
+%     axis([0 xMax yMin yMax]);
+%     ylabel('Y highpassed');
+%     xlabel('Freq (Hz)');         
+%     subplot(3,1,3);plot(timeStampWindow,spd/preprocFeatOptions.Fs);grid on;grid minor;
+%     axis([0 xMax 0 max(spd/preprocFeatOptions.Fs)]);
+%     ylabel('Speed (rate of chance of angle) (deg/s)');
+%     keyboard;
 end
 
 fprintf('\t\tSpectra generation complete\n');
